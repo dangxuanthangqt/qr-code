@@ -5,7 +5,7 @@ import {
   Html5QrcodeCameraScanConfig,
   QrcodeSuccessCallback,
 } from "html5-qrcode";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const QR_CODE_SCANNER_ID = "qr-code-scanner";
 
@@ -20,41 +20,62 @@ const DEFAULT_CONFIG: Html5QrcodeCameraScanConfig = {
 
 type QrCodeScannerProps = {
   config?: Html5QrcodeCameraScanConfig;
+  isScanning: boolean;
   onScanSuccess: QrcodeSuccessCallback;
   onScanError?: (errorMessage: string) => void;
-  isScanning: boolean;
   setIsScanning: (isScanning: boolean) => void;
 };
 
 function QrCodeScanner({
   config = DEFAULT_CONFIG,
+  isScanning,
   onScanSuccess,
   onScanError,
-  isScanning,
   setIsScanning,
 }: QrCodeScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isScanningRef = useRef<boolean>(false);
+  const [scannerInitialized, setScannerInitialized] = useState(false);
 
   useEffect(() => {
-    try {
-      const html5QrCode = new Html5Qrcode(QR_CODE_SCANNER_ID, DEFAULT_VERBOSE);
-      scannerRef.current = html5QrCode;
+    if (isScanning && !scannerRef.current) {
+      try {
+        const element = document.getElementById(QR_CODE_SCANNER_ID);
 
-      return () => {
-        if (scannerRef.current) {
-          if (isScanningRef.current) {
-            scannerRef.current
-              .stop()
-              .catch((error) => console.error("Lỗi khi dừng camera:", error));
-          }
-          scannerRef.current = null;
+        if (element) {
+          const html5QrCode = new Html5Qrcode(
+            QR_CODE_SCANNER_ID,
+            DEFAULT_VERBOSE
+          );
+          scannerRef.current = html5QrCode;
+          setScannerInitialized(true);
         }
-      };
-    } catch (error) {
-      console.error("Lỗi khi khởi tạo QR scanner:", error);
+      } catch (error) {
+        console.error("Lỗi khi khởi tạo QR scanner:", error);
+        setIsScanning(false);
+      }
     }
-  }, []);
+
+    // Cleanup function
+    return () => {
+      if (scannerRef.current && isScanningRef.current) {
+        scannerRef.current
+          .stop()
+          .catch((error) => console.error("Lỗi khi dừng camera:", error))
+          .finally(() => {
+            isScanningRef.current = false;
+          });
+      }
+    };
+  }, [isScanning]);
+
+  useEffect(() => {
+    if (isScanning && scannerInitialized && !isScanningRef.current) {
+      startScanner();
+    } else if (!isScanning && isScanningRef.current) {
+      stopScanner();
+    }
+  }, [isScanning, scannerInitialized]);
 
   const startScanner = async () => {
     if (scannerRef.current && !isScanningRef.current) {
@@ -67,7 +88,6 @@ function QrCodeScanner({
         );
 
         isScanningRef.current = true;
-        setIsScanning(true);
       } catch (error) {
         console.log("Lỗi khi bắt đầu quét mã QR:", error);
         isScanningRef.current = false;
@@ -81,99 +101,39 @@ function QrCodeScanner({
       try {
         await scannerRef.current.stop();
         isScanningRef.current = false;
-        setIsScanning(false);
       } catch (error) {
         console.log("Lỗi khi dừng camera:", error);
       }
     }
   };
 
-  useEffect(() => {
-    if (isScanning && !isScanningRef.current) {
-      startScanner();
-    } else if (!isScanning && isScanningRef.current) {
-      stopScanner();
-    }
-  }, [isScanning]);
+  const handleCloseScanner = () => {
+    setIsScanning(false);
+  };
+
+  if (!isScanning) {
+    return null;
+  }
 
   return (
-    <div
-      // className={`${
-      //   isScanning ? "fixed inset-0 z-50" : "w-[400px] h-[500px]"
-      // } border border-amber-500`}
-      className="w-[400px] h-[500px] border border-amber-500"
-      id={QR_CODE_SCANNER_ID}
-    ></div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-4 rounded-lg w-[90%] max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Quét mã QR</h3>
+          <button
+            onClick={handleCloseScanner}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            ✕
+          </button>
+        </div>
+        <div
+          className="w-full aspect-square border border-amber-500"
+          id={QR_CODE_SCANNER_ID}
+        ></div>
+      </div>
+    </div>
   );
 }
 
 export default QrCodeScanner;
-
-// "use client";
-
-// import { useState } from "react";
-// import QrCodeScanner from "./qr-code-scanner";
-
-// export default function Home() {
-//   const [isScanning, setIsScanning] = useState(false);
-
-//   const [result, setResult] = useState<string | null>(null);
-//   const [error, setError] = useState<string | null>(null);
-
-//   const handleScanSuccess = (decodedText: string, decodedResult: any) => {
-//     console.log("Decoded text: ", decodedText);
-//     console.log("Decoded result: ", decodedResult);
-//     setResult(decodedText);
-//     setError(null);
-//     setIsScanning(false);
-//   };
-
-//   const handleScanError = (errorMessage: string) => {
-//     setError(errorMessage);
-//     setIsScanning(false);
-//     console.error("Scan error: ", errorMessage);
-//   };
-
-//   return (
-//     <div className="container mx-auto p-4">
-//       <h1 className="text-2xl font-bold mb-4">QR Code Scanner</h1>
-
-//       {result && (
-//         <div className="mb-4">
-//           <h2 className="text-xl font-semibold">Kết quả quét:</h2>
-//           <p>{result}</p>
-//         </div>
-//       )}
-//       {error && (
-//         <div className="mb-4">
-//           <h2 className="text-xl font-semibold text-red-500">Lỗi:</h2>
-//           <p>{error}</p>
-//         </div>
-//       )}
-//       <div className="mb-4">
-//         {!isScanning ? (
-//           <button
-//             className="py-2 px-4 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-//             onClick={() => setIsScanning(true)}
-//           >
-//             Bật Camera
-//           </button>
-//         ) : (
-//           <button
-//             className="py-2 px-4 bg-red-500 text-white rounded-md hover:bg-red-600"
-//             onClick={() => setIsScanning(false)}
-//           >
-//             Tắt Camera
-//           </button>
-//         )}
-//       </div>
-
-//       <QrCodeScanner
-//         onScanSuccess={handleScanSuccess}
-//         onScanError={handleScanError}
-//         isScanning={isScanning}
-//         setIsScanning={setIsScanning}
-//       />
-//     </div>
-//   );
-// }
