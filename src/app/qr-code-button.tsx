@@ -1,19 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import QrCodeScanner from "./qr-code-scanner-copy";
+import QrCodeScanner from "./qr-code-scanner";
 
 export default function QrCodeButton() {
   const [isScanning, setIsScanning] = useState(false);
 
   const [result, setResult] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const handleScanSuccess = (decodedText: string, decodedResult: any) => {
     console.log("Decoded text: ", decodedText);
     console.log("Decoded result: ", decodedResult);
     setResult(decodedText);
-    setError(null);
     setIsScanning(false);
   };
 
@@ -33,12 +31,7 @@ export default function QrCodeButton() {
           <p>{result}</p>
         </div>
       )}
-      {error && (
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold text-red-500">Lỗi:</h2>
-          <p>{error}</p>
-        </div>
-      )}
+
       <div className="mb-4">
         {!isScanning ? (
           <button

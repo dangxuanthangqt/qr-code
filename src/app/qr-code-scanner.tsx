@@ -1,11 +1,11 @@
 "use client";
-
+//https://github.com/mebjas/html5-qrcode/issues/823
 import {
   Html5Qrcode,
   Html5QrcodeCameraScanConfig,
   QrcodeSuccessCallback,
 } from "html5-qrcode";
-import { Fragment, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const QR_CODE_SCANNER_ID = "qr-code-scanner";
 
@@ -20,72 +20,84 @@ const DEFAULT_CONFIG: Html5QrcodeCameraScanConfig = {
 
 type QrCodeScannerProps = {
   config?: Html5QrcodeCameraScanConfig;
+  isScanning: boolean;
   onScanSuccess: QrcodeSuccessCallback;
   onScanError?: (errorMessage: string) => void;
+  setIsScanning: (isScanning: boolean) => void;
 };
 
 function QrCodeScanner({
   config = DEFAULT_CONFIG,
+  isScanning,
   onScanSuccess,
   onScanError,
+  setIsScanning,
 }: QrCodeScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isScanningRef = useRef<boolean>(false);
+  const [scannerInitialized, setScannerInitialized] = useState(false);
 
   useEffect(() => {
-    try {
-      const html5QrCode = new Html5Qrcode(QR_CODE_SCANNER_ID);
-      scannerRef.current = html5QrCode;
-
-      return () => {
-        if (scannerRef.current) {
-          if (isScanningRef.current) {
-            scannerRef.current
-              .stop()
-              .catch((error) => console.log("Lỗi khi dừng camera:", error));
-          }
-          scannerRef.current = null;
-        }
-      };
-    } catch (error) {
-      console.log("Lỗi khi khởi tạo QR scanner:", error);
-    }
-  }, []);
-
-  async function startScanner() {
-    if (scannerRef.current) {
+    if (isScanning && !scannerRef.current) {
       try {
-        const devices = await Html5Qrcode.getCameras();
-        // scannerRef.current
+        const element = document.getElementById(QR_CODE_SCANNER_ID);
 
-        if (devices && devices.length) {
-          const cameraId = devices[0].id;
-
-          await scannerRef.current.start(
-            cameraId,
-            config,
-            (decodedText: string, decodedResult: any) => {
-              console.log("Decoded text: ", decodedText);
-              console.log("Decoded result: ", decodedResult);
-              onScanSuccess(decodedText, decodedResult);
-              scannerRef.current?.clear();
-            },
-            (errorMessage: string) => {
-              // console.error("Scan error: ", errorMessage);
-            }
+        if (element) {
+          const html5QrCodeInstance = new Html5Qrcode(
+            QR_CODE_SCANNER_ID,
+            DEFAULT_VERBOSE
           );
+          scannerRef.current = html5QrCodeInstance;
 
-          isScanningRef.current = true;
-          // .. use this to start scanning.
+          setScannerInitialized(true);
         }
+      } catch (error) {
+        console.error("Lỗi khi khởi tạo QR scanner:", error);
+        setIsScanning(false);
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      if (scannerRef.current && isScanningRef.current) {
+        scannerRef.current
+          .stop()
+          .catch((error) => console.error("Lỗi khi dừng camera:", error))
+          .finally(() => {
+            isScanningRef.current = false;
+          });
+      }
+    };
+  }, [isScanning]);
+
+  useEffect(() => {
+    if (isScanning && scannerInitialized && !isScanningRef.current) {
+      startScanner();
+    } else if (!isScanning && isScanningRef.current) {
+      stopScanner();
+    }
+  }, [isScanning, scannerInitialized]);
+
+  const startScanner = async () => {
+    if (scannerRef.current && !isScanningRef.current) {
+      try {
+        await scannerRef.current.start(
+          { facingMode: { exact: "environment" } },
+          config,
+          onScanSuccess,
+          onScanError
+        );
+
+        isScanningRef.current = true;
       } catch (error) {
         console.log("Lỗi khi bắt đầu quét mã QR:", error);
         isScanningRef.current = false;
+        setIsScanning(false);
       }
     }
-  }
+  };
 
-  async function stopScanner() {
+  const stopScanner = async () => {
     if (scannerRef.current && isScanningRef.current) {
       try {
         await scannerRef.current.stop();
@@ -94,30 +106,34 @@ function QrCodeScanner({
         console.log("Lỗi khi dừng camera:", error);
       }
     }
+  };
+
+  const handleCloseScanner = () => {
+    setIsScanning(false);
+  };
+
+  if (!isScanning) {
+    return null;
   }
 
   return (
-    <Fragment>
-      <div className="flex">
-        <button
-          style={{ margin: "10px", width: 100, height: 100, background: "red" }}
-          onClick={startScanner}
-        >
-          Scan QR Code
-        </button>
-        <button
-          style={{ margin: "10px", width: 100, height: 100, background: "red" }}
-          onClick={stopScanner}
-        >
-          Stop Scan
-        </button>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-4 rounded-lg w-[90%] max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Quét mã QR</h3>
+          <button
+            onClick={handleCloseScanner}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            ✕
+          </button>
+        </div>
+        <div
+          className="w-full aspect-square border border-amber-500"
+          id={QR_CODE_SCANNER_ID}
+        ></div>
       </div>
-      <div
-        className="w-[400px] h-[500px] border border-amber-500"
-        id={QR_CODE_SCANNER_ID}
-      ></div>
-      ;
-    </Fragment>
+    </div>
   );
 }
 
