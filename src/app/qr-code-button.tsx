@@ -2,13 +2,17 @@
 
 import { useState } from "react";
 import QrCodeScanner from "./qr-code-scanner";
+import { Html5QrcodeResult } from "html5-qrcode";
 
 export default function QrCodeButton() {
   const [isScanning, setIsScanning] = useState(false);
 
   const [result, setResult] = useState<string | null>(null);
 
-  const handleScanSuccess = (decodedText: string, decodedResult: any) => {
+  const handleScanSuccess = (
+    decodedText: string,
+    decodedResult: Html5QrcodeResult
+  ) => {
     console.log("Decoded text: ", decodedText);
     console.log("Decoded result: ", decodedResult);
     setResult(decodedText);
