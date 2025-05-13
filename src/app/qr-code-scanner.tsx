@@ -21,9 +21,9 @@ const DEFAULT_CONFIG: Html5QrcodeCameraScanConfig = {
 type QrCodeScannerProps = {
   config?: Html5QrcodeCameraScanConfig;
   isScanning: boolean;
+  setIsScanning: (isScanning: boolean) => void;
   onScanSuccess: QrcodeSuccessCallback;
   onScanError?: (errorMessage: string) => void;
-  setIsScanning: (isScanning: boolean) => void;
 };
 
 function QrCodeScanner({

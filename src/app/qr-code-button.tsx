@@ -16,8 +16,6 @@ export default function QrCodeButton() {
   };
 
   const handleScanError = (errorMessage: string) => {
-    // setError(errorMessage);
-    // setIsScanning(false);
     console.log("Scan error: ", errorMessage);
   };
 
